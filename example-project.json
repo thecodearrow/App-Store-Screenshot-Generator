@@ -1,0 +1,59 @@
+{
+  "version": "1.0.0",
+  "exportedAt": "2026-02-21T00:00:00.000Z",
+  "selectedDevices": ["iphone-6.7", "iphone-6.5"],
+  "socialProofNumber": "10,000",
+  "brand": {
+    "bgStyle": "deep-space",
+    "accentColor": "#4A9EFF",
+    "fontFamily": "Inter",
+    "appName": "RunCoach AI"
+  },
+  "slots": [
+    {
+      "id": "hero",
+      "name": "Hero Shot",
+      "headline": "Your AI Coach for Every Race",
+      "subheadline": "Personalized guidance from 5K to ultra",
+      "enabled": true,
+      "order": 0,
+      "hasScreenshot": true
+    },
+    {
+      "id": "training",
+      "name": "Training Plan",
+      "headline": "Plans That Adapt to You",
+      "subheadline": "Smart adjustments based on your progress",
+      "enabled": true,
+      "order": 1,
+      "hasScreenshot": true
+    },
+    {
+      "id": "strava",
+      "name": "Strava Integration",
+      "headline": "Your Strava Runs, Smarter",
+      "subheadline": "Auto-sync and intelligent analysis",
+      "enabled": true,
+      "order": 2,
+      "hasScreenshot": true
+    },
+    {
+      "id": "analytics",
+      "name": "Performance Analytics",
+      "headline": "Track What Matters",
+      "subheadline": "Pace, distance, and recovery insights",
+      "enabled": true,
+      "order": 3,
+      "hasScreenshot": true
+    },
+    {
+      "id": "social",
+      "name": "Social Proof",
+      "headline": "Join X+ Runners",
+      "subheadline": "A growing community of athletes",
+      "enabled": true,
+      "order": 4,
+      "hasScreenshot": true
+    }
+  ]
+}
