@@ -20,11 +20,10 @@ const FRAMES = {
     bezelSide: 0.018,
     bodyRadius: 0.12,
     screenRadius: 0.095,
-    // Status bar mask — covers screenshot's status bar + Dynamic Island
     diWidth: 0,
     diHeight: 0,
     diY: 0,
-    statusBarHeight: 0.070,
+    statusBarHeight: 0,
     // Buttons
     powerW: 0.007, powerH: 0.055, powerY: 0.18,
     volW: 0.007, volH: 0.035, volGap: 0.012, volY: 0.16,
@@ -172,89 +171,59 @@ function drawHeadline(ctx, W, H, slot, brand, headTop, headEnd, mode, logoImg) {
   const isLight = mode === 'light';
   const M = Math.round(W * 0.06);
   const CW = W - M * 2;
-  const headH = headEnd - headTop;
   const weight = brand.fontWeight || 800;
-
-  // Logo + App name badge row
-  let textTop = headTop;
   const hasLogo = logoImg && logoImg.naturalWidth > 0;
   const hasAppName = !!brand.appName;
 
-  if (hasLogo || hasAppName) {
-    const badgeSz = Math.round(W * 0.022);
-    const logoH = Math.round(badgeSz * 1.6);
+  // Layout order: [appName category] → [headline] → [subheadline] → [logo icon]
+  // We measure everything first, then vertically center the group
 
-    if (hasLogo) {
-      // Scale logo to fit badge height, preserving aspect ratio
-      const logoAspect = logoImg.naturalWidth / logoImg.naturalHeight;
-      const drawnH = logoH;
-      const drawnW = Math.round(drawnH * logoAspect);
-      const maxLogoW = Math.round(CW * 0.25);
-      const finalW = Math.min(drawnW, maxLogoW);
-      const finalH = Math.round(finalW / logoAspect);
+  // 1. Category label (appName) — small uppercase accent-colored text
+  const catSz = hasAppName ? Math.round(W * 0.024) : 0;
+  const catH = hasAppName ? Math.round(catSz * 1.6) : 0;
 
-      if (hasAppName) {
-        // Logo + text side by side, centered
-        ctx.save();
-        ctx.font = `600 ${badgeSz}px "${brand.fontFamily}", "Inter", system-ui, sans-serif`;
-        const textW = ctx.measureText(brand.appName.toUpperCase()).width;
-        ctx.restore();
-
-        const gap = Math.round(W * 0.012);
-        const totalW = finalW + gap + textW;
-        const startX = (W - totalW) / 2;
-        const logoY = textTop + (finalH > badgeSz ? 0 : (badgeSz - finalH) / 2);
-        const textY = textTop + (finalH > badgeSz ? (finalH - badgeSz) / 2 : 0);
-
-        ctx.save();
-        ctx.drawImage(logoImg, startX, logoY, finalW, finalH);
-        ctx.restore();
-
-        ctx.save();
-        ctx.font = `600 ${badgeSz}px "${brand.fontFamily}", "Inter", system-ui, sans-serif`;
-        ctx.fillStyle = isLight ? 'rgba(29,29,31,0.35)' : 'rgba(255,255,255,0.35)';
-        ctx.textAlign = 'left';
-        ctx.textBaseline = 'top';
-        ctx.fillText(brand.appName.toUpperCase(), startX + finalW + gap, textY);
-        ctx.restore();
-
-        textTop += Math.max(finalH, badgeSz) + Math.round(W * 0.02);
-      } else {
-        // Logo only, centered
-        const logoX = (W - finalW) / 2;
-        ctx.save();
-        ctx.drawImage(logoImg, logoX, textTop, finalW, finalH);
-        ctx.restore();
-        textTop += finalH + Math.round(W * 0.02);
-      }
-    } else {
-      // App name only (no logo)
-      ctx.save();
-      ctx.font = `600 ${badgeSz}px "${brand.fontFamily}", "Inter", system-ui, sans-serif`;
-      ctx.fillStyle = isLight ? 'rgba(29,29,31,0.35)' : 'rgba(255,255,255,0.35)';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'top';
-      ctx.fillText(brand.appName.toUpperCase(), W / 2, textTop);
-      ctx.restore();
-      textTop += badgeSz + Math.round(W * 0.02);
-    }
-  }
-
+  // 2. Headline
   const text = slot.headline || '';
   if (!text) return;
 
-  const availH = headEnd - textTop - Math.round(H * 0.01);
-  const headlineH = slot.subheadline ? availH * 0.72 : availH * 0.85;
-  const { sz, lines, lh } = fitText(ctx, text, CW, headlineH, brand.fontFamily, weight);
+  const headlineMaxH = (headEnd - headTop) * 0.55;
+  const { sz, lines, lh } = fitText(ctx, text, CW, headlineMaxH, brand.fontFamily, weight);
+  const headlineH = lines.length * lh;
 
-  // Calculate vertical position
-  const totalH = lines.length * lh;
-  const subSz = slot.subheadline ? Math.max(Math.round(sz * 0.34), 22) : 0;
-  const subLh = subSz * 1.5;
-  const combined = totalH + (slot.subheadline ? subLh : 0);
-  const textY = textTop + (availH - combined) / 2;
+  // 3. Subheadline
+  const subSz = slot.subheadline ? Math.max(Math.round(sz * 0.30), 20) : 0;
+  const subH = slot.subheadline ? Math.round(subSz * 1.5) : 0;
 
-  // Draw headline with depth shadow
+  // 4. Logo icon
+  let logoW = 0, logoH = 0;
+  if (hasLogo) {
+    logoH = Math.round(W * 0.065);
+    const logoAspect = logoImg.naturalWidth / logoImg.naturalHeight;
+    logoW = Math.round(logoH * logoAspect);
+  }
+
+  // Calculate gaps
+  const gapCatHead = hasAppName ? Math.round(W * 0.012) : 0;
+  const gapHeadSub = slot.subheadline ? Math.round(W * 0.008) : 0;
+  const gapSubLogo = hasLogo ? Math.round(W * 0.015) : 0;
+
+  const totalContentH = catH + gapCatHead + headlineH + gapHeadSub + subH + gapSubLogo + logoH;
+  let y = headTop + ((headEnd - headTop) - totalContentH) / 2;
+
+  // Draw category label (appName as accent-colored uppercase)
+  if (hasAppName) {
+    ctx.save();
+    ctx.font = `700 ${catSz}px "${brand.fontFamily}", "Inter", system-ui, sans-serif`;
+    ctx.fillStyle = brand.accentColor || (isLight ? '#1d1d1f' : '#ffffff');
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    ctx.letterSpacing = `${Math.round(catSz * 0.15)}px`;
+    ctx.fillText(brand.appName.toUpperCase(), W / 2, y);
+    ctx.restore();
+    y += catH + gapCatHead;
+  }
+
+  // Draw headline
   ctx.save();
   ctx.textAlign = 'center';
   ctx.textBaseline = 'top';
@@ -263,24 +232,43 @@ function drawHeadline(ctx, W, H, slot, brand, headTop, headEnd, mode, logoImg) {
   // Shadow layer
   ctx.fillStyle = isLight ? 'rgba(0,0,0,0.06)' : 'rgba(0,0,0,0.4)';
   for (let i = 0; i < lines.length; i++) {
-    ctx.fillText(lines[i], W / 2, textY + i * lh + sz * 0.03);
+    ctx.fillText(lines[i], W / 2, y + i * lh + sz * 0.03);
   }
 
   // Main text
   ctx.fillStyle = isLight ? '#1d1d1f' : '#FFFFFF';
   for (let i = 0; i < lines.length; i++) {
-    ctx.fillText(lines[i], W / 2, textY + i * lh);
+    ctx.fillText(lines[i], W / 2, y + i * lh);
   }
   ctx.restore();
+  y += headlineH;
 
-  // Subheadline
+  // Draw subheadline
   if (slot.subheadline) {
+    y += gapHeadSub;
     ctx.save();
     ctx.font = `400 ${subSz}px "${brand.fontFamily}", "Inter", system-ui, sans-serif`;
-    ctx.fillStyle = isLight ? 'rgba(29,29,31,0.45)' : 'rgba(255,255,255,0.45)';
+    ctx.fillStyle = isLight ? 'rgba(29,29,31,0.50)' : 'rgba(255,255,255,0.50)';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
-    ctx.fillText(slot.subheadline, W / 2, textY + totalH + sz * 0.18);
+    ctx.fillText(slot.subheadline, W / 2, y);
+    ctx.restore();
+    y += subH;
+  }
+
+  // Draw logo icon (centered, below subheadline)
+  if (hasLogo) {
+    y += gapSubLogo;
+    const logoX = (W - logoW) / 2;
+    // Draw rounded icon with subtle shadow
+    ctx.save();
+    const iconR = Math.round(logoW * 0.22);
+    ctx.shadowColor = 'rgba(0,0,0,0.15)';
+    ctx.shadowBlur = Math.round(logoW * 0.12);
+    ctx.shadowOffsetY = Math.round(logoW * 0.04);
+    rr(ctx, logoX, y, logoW, logoH, iconR);
+    ctx.clip();
+    ctx.drawImage(logoImg, logoX, y, logoW, logoH);
     ctx.restore();
   }
 }
@@ -289,7 +277,9 @@ function drawHeadline(ctx, W, H, slot, brand, headTop, headEnd, mode, logoImg) {
 
 function drawDevice(ctx, scrW, scrH, cx, cy, platform, mode) {
   const F = FRAMES[platform] || FRAMES.iphone;
-  const isLight = mode === 'light';
+  // Always dark frame — premium look, Dynamic Island blends naturally
+  const isLight = false;
+  const bgIsLight = mode === 'light';
 
   const bL = Math.round(scrW * F.bezelSide);
   const bT = Math.round(scrH * F.bezelTop);
@@ -305,31 +295,31 @@ function drawDevice(ctx, scrW, scrH, cx, cy, platform, mode) {
 
   // ── Shadow 1: Wide ambient glow ──
   ctx.save();
-  ctx.shadowColor = isLight ? 'rgba(0,0,0,0.10)' : 'rgba(0,0,0,0.55)';
+  ctx.shadowColor = bgIsLight ? 'rgba(0,0,0,0.18)' : 'rgba(0,0,0,0.55)';
   ctx.shadowBlur = bW * 0.20;
   ctx.shadowOffsetY = bW * 0.03;
   rr(ctx, bX, bY, bW, bH, bR);
-  ctx.fillStyle = isLight ? '#f0f0f2' : '#1a1a1e';
+  ctx.fillStyle = '#1a1a1e';
   ctx.fill();
   ctx.restore();
 
   // ── Shadow 2: Medium directional drop ──
   ctx.save();
-  ctx.shadowColor = isLight ? 'rgba(0,0,0,0.12)' : 'rgba(0,0,0,0.7)';
+  ctx.shadowColor = bgIsLight ? 'rgba(0,0,0,0.20)' : 'rgba(0,0,0,0.7)';
   ctx.shadowBlur = bW * 0.08;
   ctx.shadowOffsetY = bW * 0.045;
   rr(ctx, bX, bY, bW, bH, bR);
-  ctx.fillStyle = isLight ? '#f0f0f2' : '#1a1a1e';
+  ctx.fillStyle = '#1a1a1e';
   ctx.fill();
   ctx.restore();
 
   // ── Shadow 3: Tight contact shadow ──
   ctx.save();
-  ctx.shadowColor = isLight ? 'rgba(0,0,0,0.06)' : 'rgba(0,0,0,0.5)';
+  ctx.shadowColor = bgIsLight ? 'rgba(0,0,0,0.12)' : 'rgba(0,0,0,0.5)';
   ctx.shadowBlur = bW * 0.02;
   ctx.shadowOffsetY = bW * 0.008;
   rr(ctx, bX, bY, bW, bH, bR);
-  ctx.fillStyle = isLight ? '#f0f0f2' : '#1a1a1e';
+  ctx.fillStyle = '#1a1a1e';
   ctx.fill();
   ctx.restore();
 
@@ -735,9 +725,9 @@ export async function composeScreenshot({
   const platform = (W / H) > 0.6 ? 'ipad' : 'iphone';
 
   // ── Layout constants ──
-  const HEAD_TOP = Math.round(H * 0.030);
-  const HEAD_END = Math.round(H * 0.200);
-  const DEVICE_START = HEAD_END + Math.round(H * 0.005);
+  const HEAD_TOP = Math.round(H * 0.025);
+  const HEAD_END = Math.round(H * 0.300);
+  const DEVICE_START = HEAD_END;
   const SIDE_MARGIN = Math.round(W * 0.055);
   const OVERFLOW = Math.round(H * 0.08);
 
