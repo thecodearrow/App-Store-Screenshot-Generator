@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { createDefaultProject, DEVICE_SIZES } from './engine/templates.js';
+import { createDefaultProject, createNewSlot, DEVICE_SIZES } from './engine/templates.js';
 import { validateAll } from './engine/validator.js';
 import { exportSingle } from './utils/exporter.js';
 import SlotList from './components/SlotList.jsx';
@@ -50,6 +50,29 @@ export default function App() {
         toIndex <= p.selectedSlotIndex
       ) {
         newSelectedIndex++;
+      }
+      return { ...p, slots: newSlots, selectedSlotIndex: newSelectedIndex };
+    });
+  }, []);
+
+  const handleAddSlot = useCallback(() => {
+    setProject((p) => {
+      const newSlot = createNewSlot(p.slots.length);
+      const newSlots = [...p.slots, newSlot];
+      return { ...p, slots: newSlots, selectedSlotIndex: newSlots.length - 1 };
+    });
+  }, []);
+
+  const handleRemoveSlot = useCallback((index) => {
+    setProject((p) => {
+      if (p.slots.length <= 1) return p;
+      const newSlots = p.slots.filter((_, i) => i !== index);
+      newSlots.forEach((s, i) => (s.order = i));
+      let newSelectedIndex = p.selectedSlotIndex;
+      if (newSelectedIndex >= newSlots.length) {
+        newSelectedIndex = newSlots.length - 1;
+      } else if (index < p.selectedSlotIndex) {
+        newSelectedIndex--;
       }
       return { ...p, slots: newSlots, selectedSlotIndex: newSelectedIndex };
     });
@@ -229,6 +252,8 @@ export default function App() {
             onSelect={handleSelectSlot}
             onReorder={handleReorder}
             onToggle={handleToggleSlot}
+            onAdd={handleAddSlot}
+            onRemove={handleRemoveSlot}
           />
         </aside>
 

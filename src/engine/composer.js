@@ -20,10 +20,11 @@ const FRAMES = {
     bezelSide: 0.018,
     bodyRadius: 0.12,
     screenRadius: 0.095,
-    // Dynamic Island — realistic pill proportions (~4:1 aspect)
-    diWidth: 0.28,
-    diHeight: 0.035,
-    diY: 0.005,
+    // Status bar mask — covers screenshot's status bar + Dynamic Island
+    diWidth: 0,
+    diHeight: 0,
+    diY: 0,
+    statusBarHeight: 0.070,
     // Buttons
     powerW: 0.007, powerH: 0.055, powerY: 0.18,
     volW: 0.007, volH: 0.035, volGap: 0.012, volY: 0.16,
@@ -111,10 +112,10 @@ function drawBackground(ctx, W, H, bgKey, accent) {
   ctx.fillRect(0, 0, W, H);
 
   // Layer 2: Large accent orb glow (upper area, behind headline)
-  const glowAlpha1 = isLight ? '0A' : '18';
-  const glowAlpha2 = isLight ? '05' : '0A';
-  const glowAlpha3 = isLight ? '02' : '04';
-  const g1 = ctx.createRadialGradient(W * 0.5, H * 0.08, 0, W * 0.5, H * 0.08, W * 0.8);
+  const glowAlpha1 = isLight ? '12' : '22';
+  const glowAlpha2 = isLight ? '08' : '10';
+  const glowAlpha3 = isLight ? '04' : '08';
+  const g1 = ctx.createRadialGradient(W * 0.5, H * 0.06, 0, W * 0.5, H * 0.06, W * 0.9);
   g1.addColorStop(0, bg.glowColor + glowAlpha1);
   g1.addColorStop(0.3, bg.glowColor + glowAlpha2);
   g1.addColorStop(0.7, bg.glowSecondary + glowAlpha3);
@@ -123,9 +124,9 @@ function drawBackground(ctx, W, H, bgKey, accent) {
   ctx.fillRect(0, 0, W, H * 0.5);
 
   // Layer 3: Secondary glow (accent-colored, centered on device)
-  const accentAlpha1 = isLight ? '04' : '08';
-  const accentAlpha2 = isLight ? '02' : '03';
-  const g2 = ctx.createRadialGradient(W * 0.5, H * 0.55, 0, W * 0.5, H * 0.55, W * 0.6);
+  const accentAlpha1 = isLight ? '08' : '10';
+  const accentAlpha2 = isLight ? '04' : '06';
+  const g2 = ctx.createRadialGradient(W * 0.5, H * 0.55, 0, W * 0.5, H * 0.55, W * 0.65);
   g2.addColorStop(0, accent + accentAlpha1);
   g2.addColorStop(0.5, accent + accentAlpha2);
   g2.addColorStop(1, 'transparent');
@@ -551,76 +552,41 @@ function drawDevice(ctx, scrW, scrH, cx, cy, platform, mode) {
   ctx.fill();
   ctx.restore();
 
+  const sbH = F.statusBarHeight ? Math.round(scrH * F.statusBarHeight) : 0;
+
   return {
     sX, sY, scrW, scrH, sR,
     bX, bY, bW, bH,
-    di: F.diWidth > 0 ? {
-      x: sX + (scrW - Math.round(scrW * F.diWidth)) / 2,
-      y: sY + Math.round(scrH * F.diY),
-      w: Math.round(scrW * F.diWidth),
-      h: Math.round(scrH * F.diHeight),
-      r: Math.round(Math.round(scrH * F.diHeight) * 0.5),
-    } : null,
+    di: null,
+    statusBar: sbH > 0 ? { x: sX, y: sY, w: scrW, h: sbH, r: sR } : null,
   };
 }
 
-function drawDynamicIsland(ctx, di) {
-  if (!di) return;
+function sampleScreenshotTopColor(ctx, dev) {
+  // Sample pixels from the screenshot just below the status bar to detect its BG color
+  const sampleY = dev.sY + 2;
+  const sampleX = dev.sX + Math.round(dev.scrW * 0.1); // avoid corners
+  try {
+    const px = ctx.getImageData(sampleX, sampleY, 1, 1).data;
+    return `rgb(${px[0]},${px[1]},${px[2]})`;
+  } catch {
+    return null;
+  }
+}
 
-  // ── Main pill shape with subtle gradient ──
-  ctx.save();
-  rr(ctx, di.x, di.y, di.w, di.h, di.r);
-  const diG = ctx.createLinearGradient(di.x, di.y, di.x, di.y + di.h);
-  diG.addColorStop(0, '#0c0c0c');
-  diG.addColorStop(0.4, '#000000');
-  diG.addColorStop(1, '#060606');
-  ctx.fillStyle = diG;
-  ctx.fill();
-  ctx.restore();
+function drawStatusBarMask(ctx, sb, mode, screenshotColor) {
+  if (!sb) return;
+  const isLight = mode === 'light';
 
-  // ── Outer ring border ──
-  ctx.save();
-  rr(ctx, di.x, di.y, di.w, di.h, di.r);
-  ctx.strokeStyle = 'rgba(255,255,255,0.07)';
-  ctx.lineWidth = 1.2;
-  ctx.stroke();
-  ctx.restore();
+  // Use auto-detected color from screenshot, or fall back to sensible defaults
+  const fillColor = screenshotColor || (isLight ? '#ffffff' : '#000000');
 
-  // ── Inner shadow for depth (top edge darker) ──
+  // ── Full-width mask over screenshot's status bar area ──
   ctx.save();
-  rr(ctx, di.x, di.y, di.w, di.h, di.r);
+  rr(ctx, sb.x, sb.y, sb.w, sb.h + sb.r, sb.r);
   ctx.clip();
-  const diInner = ctx.createLinearGradient(di.x, di.y, di.x, di.y + di.h * 0.4);
-  diInner.addColorStop(0, 'rgba(0,0,0,0.4)');
-  diInner.addColorStop(1, 'rgba(0,0,0,0)');
-  ctx.fillStyle = diInner;
-  ctx.fillRect(di.x, di.y, di.w, di.h * 0.4);
-  ctx.restore();
-
-  // ── Front camera lens (right-of-center in the pill) ──
-  const lensR = Math.max(Math.round(di.h * 0.20), 3);
-  const lensX = di.x + di.w * 0.70;
-  const lensY = di.y + di.h / 2;
-
-  // Lens body
-  ctx.save();
-  ctx.beginPath();
-  ctx.arc(lensX, lensY, lensR, 0, Math.PI * 2);
-  ctx.fillStyle = '#04040a';
-  ctx.fill();
-
-  // Lens ring
-  ctx.beginPath();
-  ctx.arc(lensX, lensY, lensR, 0, Math.PI * 2);
-  ctx.strokeStyle = 'rgba(255,255,255,0.06)';
-  ctx.lineWidth = 0.6;
-  ctx.stroke();
-
-  // Tiny specular catch on lens
-  ctx.beginPath();
-  ctx.arc(lensX - lensR * 0.25, lensY - lensR * 0.25, Math.max(lensR * 0.15, 1), 0, Math.PI * 2);
-  ctx.fillStyle = 'rgba(255,255,255,0.10)';
-  ctx.fill();
+  ctx.fillStyle = fillColor;
+  ctx.fillRect(sb.x, sb.y, sb.w, sb.h);
   ctx.restore();
 }
 
@@ -630,17 +596,17 @@ function drawBottomFade(ctx, W, H, bgKey) {
   const bg = BG_PRESETS[bgKey] || BG_PRESETS['deep-space'];
   const bottom = bg.stops[bg.stops.length - 1].color;
 
-  // Parse hex to rgba for smooth alpha blending
   const r = parseInt(bottom.slice(1, 3), 16);
   const g = parseInt(bottom.slice(3, 5), 16);
   const b = parseInt(bottom.slice(5, 7), 16);
 
-  const fadeH = Math.round(H * 0.10);
+  // Taller, smoother fade that doesn't cut content abruptly
+  const fadeH = Math.round(H * 0.06);
   const grad = ctx.createLinearGradient(0, H - fadeH, 0, H);
   grad.addColorStop(0, `rgba(${r},${g},${b},0)`);
-  grad.addColorStop(0.3, `rgba(${r},${g},${b},0.3)`);
-  grad.addColorStop(0.6, `rgba(${r},${g},${b},0.7)`);
-  grad.addColorStop(0.85, `rgba(${r},${g},${b},0.92)`);
+  grad.addColorStop(0.4, `rgba(${r},${g},${b},0.15)`);
+  grad.addColorStop(0.7, `rgba(${r},${g},${b},0.5)`);
+  grad.addColorStop(0.9, `rgba(${r},${g},${b},0.85)`);
   grad.addColorStop(1, `rgba(${r},${g},${b},1)`);
   ctx.fillStyle = grad;
   ctx.fillRect(0, H - fadeH, W, fadeH);
@@ -650,15 +616,103 @@ function drawBottomFade(ctx, W, H, bgKey) {
 
 function drawDeviceGlow(ctx, cx, bottomY, deviceW, accent, mode) {
   const isLight = mode === 'light';
-  const gW = deviceW * 0.6;
-  const gH = deviceW * 0.08;
+  const gW = deviceW * 0.8;
+  const gH = deviceW * 0.12;
   const gY = bottomY;
   const g = ctx.createRadialGradient(cx, gY, 0, cx, gY, gW * 0.5);
-  g.addColorStop(0, accent + (isLight ? '0A' : '15'));
-  g.addColorStop(0.5, accent + (isLight ? '04' : '08'));
+  g.addColorStop(0, accent + (isLight ? '10' : '20'));
+  g.addColorStop(0.4, accent + (isLight ? '08' : '10'));
   g.addColorStop(1, 'transparent');
   ctx.fillStyle = g;
   ctx.fillRect(cx - gW / 2, gY - gH, gW, gH * 2);
+}
+
+// ═══════════════════════════════════════════════════════════
+// DEVICE RENDERING HELPERS (factored for layout reuse)
+// ═══════════════════════════════════════════════════════════
+
+function _drawScreenInDevice(ctx, dev, screenshotImg) {
+  ctx.save();
+  rr(ctx, dev.sX, dev.sY, dev.scrW, dev.scrH, dev.sR);
+  ctx.clip();
+  ctx.drawImage(screenshotImg, dev.sX, dev.sY, dev.scrW, dev.scrH);
+  ctx.restore();
+}
+
+function _drawScreenEdgeShadows(ctx, dev) {
+  ctx.save();
+  rr(ctx, dev.sX, dev.sY, dev.scrW, dev.scrH, dev.sR);
+  ctx.clip();
+  const edgeShadowD = Math.round(dev.scrW * 0.006);
+
+  const sInTop = ctx.createLinearGradient(dev.sX, dev.sY, dev.sX, dev.sY + edgeShadowD);
+  sInTop.addColorStop(0, 'rgba(0,0,0,0.25)');
+  sInTop.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = sInTop;
+  ctx.fillRect(dev.sX, dev.sY, dev.scrW, edgeShadowD);
+
+  const sInLeft = ctx.createLinearGradient(dev.sX, dev.sY, dev.sX + edgeShadowD, dev.sY);
+  sInLeft.addColorStop(0, 'rgba(0,0,0,0.12)');
+  sInLeft.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = sInLeft;
+  ctx.fillRect(dev.sX, dev.sY, edgeShadowD, dev.scrH);
+
+  const sInRight = ctx.createLinearGradient(dev.sX + dev.scrW, dev.sY, dev.sX + dev.scrW - edgeShadowD, dev.sY);
+  sInRight.addColorStop(0, 'rgba(0,0,0,0.08)');
+  sInRight.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = sInRight;
+  ctx.fillRect(dev.sX + dev.scrW - edgeShadowD, dev.sY, edgeShadowD, dev.scrH);
+  ctx.restore();
+}
+
+function _drawGlassReflection(ctx, dev) {
+  ctx.save();
+  rr(ctx, dev.sX, dev.sY, dev.scrW, dev.scrH, dev.sR);
+  ctx.clip();
+  const refl = ctx.createLinearGradient(dev.sX, dev.sY, dev.sX, dev.sY + dev.scrH * 0.10);
+  refl.addColorStop(0, 'rgba(255,255,255,0.04)');
+  refl.addColorStop(0.5, 'rgba(255,255,255,0.015)');
+  refl.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = refl;
+  ctx.fillRect(dev.sX, dev.sY, dev.scrW, dev.scrH * 0.10);
+  ctx.restore();
+}
+
+function _drawPlaceholder(ctx, W, H, DEVICE_START, SIDE_MARGIN, brand, isLight) {
+  const phW = Math.round((W - SIDE_MARGIN * 2) * 0.55);
+  const phH = Math.round((H - DEVICE_START) * 0.72);
+  const phX = (W - phW) / 2;
+  const phY = DEVICE_START + ((H - DEVICE_START) - phH) * 0.3;
+  const phR = Math.round(phW * 0.12);
+
+  ctx.save();
+  rr(ctx, phX, phY, phW, phH, phR);
+  ctx.fillStyle = isLight ? 'rgba(0,0,0,0.02)' : 'rgba(255,255,255,0.012)';
+  ctx.fill();
+  ctx.setLineDash([14, 10]);
+  ctx.strokeStyle = isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.05)';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.restore();
+
+  const inset = Math.round(phW * 0.014);
+  ctx.save();
+  rr(ctx, phX + inset, phY + inset, phW - inset * 2, phH - inset * 2, phR - inset);
+  ctx.setLineDash([10, 8]);
+  ctx.strokeStyle = isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.025)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.restore();
+
+  ctx.save();
+  ctx.font = `500 ${Math.round(W * 0.024)}px "${brand.fontFamily}", system-ui, sans-serif`;
+  ctx.fillStyle = isLight ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.10)';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('Drop screenshot here', W / 2, phY + phH / 2);
+  ctx.restore();
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -681,11 +735,11 @@ export async function composeScreenshot({
   const platform = (W / H) > 0.6 ? 'ipad' : 'iphone';
 
   // ── Layout constants ──
-  const HEAD_TOP = Math.round(H * 0.035);
-  const HEAD_END = Math.round(H * 0.235);
+  const HEAD_TOP = Math.round(H * 0.030);
+  const HEAD_END = Math.round(H * 0.200);
   const DEVICE_START = HEAD_END + Math.round(H * 0.005);
-  const SIDE_MARGIN = Math.round(W * 0.065);
-  const OVERFLOW = Math.round(H * 0.065);
+  const SIDE_MARGIN = Math.round(W * 0.055);
+  const OVERFLOW = Math.round(H * 0.08);
 
   // ── 1. Rich layered background ──
   drawBackground(ctx, W, H, brand.bgStyle, brand.accentColor);
@@ -698,10 +752,203 @@ export async function composeScreenshot({
   ctx.fillStyle = aLine;
   ctx.fillRect(0, 0, W, Math.max(Math.round(H * 0.001), 2));
 
-  // ── 3. Headline + logo ──
+  const layout = slot.layout || 'center';
+
+  // ── TEXT-ONLY layout (no device, headline fills most of canvas) ──
+  if (layout === 'text-only') {
+    drawHeadline(ctx, W, H, slot, brand, HEAD_TOP, Math.round(H * 0.50), mode, logoImg);
+
+    // Feature pills (subheadline words become pill badges)
+    if (slot.subheadline) {
+      const pills = slot.subheadline.split(',').map((s) => s.trim()).filter(Boolean);
+      if (pills.length > 0) {
+        const pillSz = Math.max(Math.round(W * 0.028), 20);
+        const pillPadX = Math.round(pillSz * 1.2);
+        const pillPadY = Math.round(pillSz * 0.5);
+        const pillGap = Math.round(pillSz * 0.55);
+        const pillR = Math.round(pillSz * 0.7);
+
+        ctx.save();
+        ctx.font = `600 ${pillSz}px "${brand.fontFamily}", "Inter", system-ui, sans-serif`;
+
+        // Measure total width for centering
+        const pillWidths = pills.map((t) => ctx.measureText(t).width + pillPadX * 2);
+        const rows = [];
+        let row = [];
+        let rowW = 0;
+        const maxRowW = W * 0.85;
+        for (let i = 0; i < pills.length; i++) {
+          if (rowW + pillWidths[i] + (row.length > 0 ? pillGap : 0) > maxRowW && row.length > 0) {
+            rows.push(row);
+            row = [];
+            rowW = 0;
+          }
+          row.push(i);
+          rowW += pillWidths[i] + (row.length > 1 ? pillGap : 0);
+        }
+        if (row.length > 0) rows.push(row);
+
+        const pillH = pillSz + pillPadY * 2;
+        const rowGap = Math.round(pillSz * 0.55);
+        const totalRowH = rows.length * pillH + (rows.length - 1) * rowGap;
+        let drawY = Math.round(H * 0.55) + (Math.round(H * 0.35) - totalRowH) / 2;
+
+        for (const rowIndices of rows) {
+          const thisRowW = rowIndices.reduce((sum, i) => sum + pillWidths[i], 0) + (rowIndices.length - 1) * pillGap;
+          let drawX = (W - thisRowW) / 2;
+          for (const i of rowIndices) {
+            // Pill background
+            rr(ctx, drawX, drawY, pillWidths[i], pillH, pillR);
+            ctx.fillStyle = isLight
+              ? 'rgba(0,0,0,0.04)'
+              : 'rgba(255,255,255,0.06)';
+            ctx.fill();
+            ctx.strokeStyle = isLight
+              ? 'rgba(0,0,0,0.08)'
+              : 'rgba(255,255,255,0.10)';
+            ctx.lineWidth = 1.5;
+            rr(ctx, drawX, drawY, pillWidths[i], pillH, pillR);
+            ctx.stroke();
+
+            // Pill text
+            ctx.fillStyle = isLight ? '#1d1d1f' : '#FFFFFF';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(pills[i], drawX + pillWidths[i] / 2, drawY + pillH / 2);
+
+            drawX += pillWidths[i] + pillGap;
+          }
+          drawY += pillH + rowGap;
+        }
+        ctx.restore();
+      }
+    }
+
+    drawBottomFade(ctx, W, H, brand.bgStyle);
+    return;
+  }
+
+  // ── OFFSET layouts: headline and device side by side ──
+  if (layout === 'offset-left' || layout === 'offset-right') {
+    // Headline occupies top portion
+    const headEndOffset = Math.round(H * 0.20);
+    drawHeadline(ctx, W, H, slot, brand, HEAD_TOP, headEndOffset, mode, logoImg);
+
+    if (screenshotImg) {
+      const imgW = screenshotImg.naturalWidth;
+      const imgH = screenshotImg.naturalHeight;
+      const F = FRAMES[platform] || FRAMES.iphone;
+      const bezelW = 1 + F.bezelSide * 2;
+      const bezelH = 1 + F.bezelTop + F.bezelBottom;
+
+      // Shrink device to ~70% width, offset to one side
+      const deviceAreaW = (W - SIDE_MARGIN * 2) * 0.70;
+      const deviceAreaH = (H - headEndOffset) + OVERFLOW;
+
+      const maxScrW = deviceAreaW / bezelW;
+      const maxScrH = deviceAreaH / bezelH;
+      const sc = Math.min(maxScrW / imgW, maxScrH / imgH, 1.5);
+      const scrW = Math.round(imgW * sc);
+      const scrH = Math.round(imgH * sc);
+
+      const deviceBodyH = scrH * bezelH;
+      const deviceBodyW = scrW * bezelW;
+      const topPad = Math.round(H * 0.008);
+
+      // Offset: push device to one side with partial overflow off-edge
+      const edgeInset = Math.round(W * 0.06);
+      let cx;
+      if (layout === 'offset-left') {
+        cx = edgeInset + deviceBodyW / 2;
+      } else {
+        cx = W - edgeInset - deviceBodyW / 2;
+      }
+      const cy = headEndOffset + topPad + deviceBodyH / 2;
+
+      const deviceBottom = cy + deviceBodyH / 2;
+      drawDeviceGlow(ctx, cx, Math.min(deviceBottom, H), deviceBodyW, brand.accentColor, mode);
+      const dev = drawDevice(ctx, scrW, scrH, cx, cy, platform, mode);
+      _drawScreenInDevice(ctx, dev, screenshotImg, brand, mode, isLight);
+      const sbColor = sampleScreenshotTopColor(ctx, dev);
+      drawStatusBarMask(ctx, dev.statusBar, mode, sbColor);
+      _drawScreenEdgeShadows(ctx, dev);
+      _drawGlassReflection(ctx, dev);
+
+      // Draw side text in the empty space
+      const textSide = layout === 'offset-left' ? 'right' : 'left';
+      const textX = textSide === 'right' ? cx + deviceBodyW / 2 + Math.round(W * 0.04) : SIDE_MARGIN;
+      const textW = textSide === 'right' ? W - textX - SIDE_MARGIN : cx - deviceBodyW / 2 - Math.round(W * 0.04) - SIDE_MARGIN;
+      const textY = headEndOffset + Math.round(H * 0.08);
+
+      if (textW > W * 0.15 && slot.subheadline) {
+        const sideSz = Math.max(Math.round(W * 0.032), 24);
+        ctx.save();
+        ctx.font = `500 ${sideSz}px "${brand.fontFamily}", "Inter", system-ui, sans-serif`;
+        ctx.fillStyle = isLight ? 'rgba(29,29,31,0.55)' : 'rgba(255,255,255,0.55)';
+        ctx.textAlign = textSide === 'right' ? 'left' : 'right';
+        ctx.textBaseline = 'top';
+        const sideLines = wrapText(ctx, slot.subheadline, textW);
+        const sideLh = Math.round(sideSz * 1.45);
+        for (let i = 0; i < sideLines.length; i++) {
+          ctx.fillText(sideLines[i], textSide === 'right' ? textX : textX + textW, textY + i * sideLh);
+        }
+        ctx.restore();
+      }
+    } else {
+      _drawPlaceholder(ctx, W, H, DEVICE_START, SIDE_MARGIN, brand, isLight);
+    }
+
+    drawBottomFade(ctx, W, H, brand.bgStyle);
+    return;
+  }
+
+  // ── HERO-LARGE layout: bigger device, smaller headline ──
+  if (layout === 'hero-large') {
+    const headEndHero = Math.round(H * 0.16);
+    drawHeadline(ctx, W, H, slot, brand, HEAD_TOP, headEndHero, mode, logoImg);
+
+    if (screenshotImg) {
+      const imgW = screenshotImg.naturalWidth;
+      const imgH = screenshotImg.naturalHeight;
+      const F = FRAMES[platform] || FRAMES.iphone;
+      const bezelW = 1 + F.bezelSide * 2;
+      const bezelH = 1 + F.bezelTop + F.bezelBottom;
+
+      // Use more width for a larger device
+      const marginHero = Math.round(W * 0.035);
+      const availW = W - marginHero * 2;
+      const availH = (H - headEndHero) + Math.round(H * 0.10);
+
+      const maxScrW = availW / bezelW;
+      const maxScrH = availH / bezelH;
+      const sc = Math.min(maxScrW / imgW, maxScrH / imgH, 1.5);
+      const scrW = Math.round(imgW * sc);
+      const scrH = Math.round(imgH * sc);
+
+      const deviceBodyH = scrH * bezelH;
+      const topPad = Math.round(H * 0.005);
+      const cx = W / 2;
+      const cy = headEndHero + topPad + deviceBodyH / 2;
+
+      const deviceBottom = cy + deviceBodyH / 2;
+      drawDeviceGlow(ctx, cx, Math.min(deviceBottom, H), scrW * bezelW, brand.accentColor, mode);
+      const dev = drawDevice(ctx, scrW, scrH, cx, cy, platform, mode);
+      _drawScreenInDevice(ctx, dev, screenshotImg, brand, mode, isLight);
+      const sbColor = sampleScreenshotTopColor(ctx, dev);
+      drawStatusBarMask(ctx, dev.statusBar, mode, sbColor);
+      _drawScreenEdgeShadows(ctx, dev);
+      _drawGlassReflection(ctx, dev);
+    } else {
+      _drawPlaceholder(ctx, W, H, DEVICE_START, SIDE_MARGIN, brand, isLight);
+    }
+
+    drawBottomFade(ctx, W, H, brand.bgStyle);
+    return;
+  }
+
+  // ── CENTER layout (default) ──
   drawHeadline(ctx, W, H, slot, brand, HEAD_TOP, HEAD_END, mode, logoImg);
 
-  // ── 4. Device + screenshot ──
   if (screenshotImg) {
     const imgW = screenshotImg.naturalWidth;
     const imgH = screenshotImg.naturalHeight;
@@ -709,120 +956,33 @@ export async function composeScreenshot({
     const bezelW = 1 + F.bezelSide * 2;
     const bezelH = 1 + F.bezelTop + F.bezelBottom;
 
-    // Available space for the entire device body
     const availW = W - SIDE_MARGIN * 2;
     const availH = (H - DEVICE_START) + OVERFLOW;
 
-    // Fit screen inside device inside available space
     const maxScrW = availW / bezelW;
     const maxScrH = availH / bezelH;
     const sc = Math.min(maxScrW / imgW, maxScrH / imgH, 1.5);
     const scrW = Math.round(imgW * sc);
     const scrH = Math.round(imgH * sc);
 
-    // Center horizontally, top-align with small gap
     const deviceBodyH = scrH * bezelH;
     const topPad = Math.round(H * 0.008);
     const cx = W / 2;
     const cy = DEVICE_START + topPad + deviceBodyH / 2;
 
-    // Glow behind device
     const deviceBottom = cy + deviceBodyH / 2;
     drawDeviceGlow(ctx, cx, Math.min(deviceBottom, H), scrW * bezelW, brand.accentColor, mode);
-
-    // Device frame
     const dev = drawDevice(ctx, scrW, scrH, cx, cy, platform, mode);
-
-    // Screenshot clipped into screen area
-    ctx.save();
-    rr(ctx, dev.sX, dev.sY, dev.scrW, dev.scrH, dev.sR);
-    ctx.clip();
-    ctx.drawImage(screenshotImg, dev.sX, dev.sY, dev.scrW, dev.scrH);
-    ctx.restore();
-
-    // Dynamic Island on top
-    drawDynamicIsland(ctx, dev.di);
-
-    // Screen inner edge shadows (bezel casting shadow onto display)
-    ctx.save();
-    rr(ctx, dev.sX, dev.sY, dev.scrW, dev.scrH, dev.sR);
-    ctx.clip();
-    const edgeShadowD = Math.round(dev.scrW * 0.006);
-    // Top edge
-    const sInTop = ctx.createLinearGradient(dev.sX, dev.sY, dev.sX, dev.sY + edgeShadowD);
-    sInTop.addColorStop(0, 'rgba(0,0,0,0.25)');
-    sInTop.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.fillStyle = sInTop;
-    ctx.fillRect(dev.sX, dev.sY, dev.scrW, edgeShadowD);
-    // Left edge
-    const sInLeft = ctx.createLinearGradient(dev.sX, dev.sY, dev.sX + edgeShadowD, dev.sY);
-    sInLeft.addColorStop(0, 'rgba(0,0,0,0.12)');
-    sInLeft.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.fillStyle = sInLeft;
-    ctx.fillRect(dev.sX, dev.sY, edgeShadowD, dev.scrH);
-    // Right edge
-    const sInRight = ctx.createLinearGradient(dev.sX + dev.scrW, dev.sY, dev.sX + dev.scrW - edgeShadowD, dev.sY);
-    sInRight.addColorStop(0, 'rgba(0,0,0,0.08)');
-    sInRight.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.fillStyle = sInRight;
-    ctx.fillRect(dev.sX + dev.scrW - edgeShadowD, dev.sY, edgeShadowD, dev.scrH);
-    ctx.restore();
-
-    // Glass reflection (subtle curved highlight across screen)
-    ctx.save();
-    rr(ctx, dev.sX, dev.sY, dev.scrW, dev.scrH, dev.sR);
-    ctx.clip();
-    const refl = ctx.createLinearGradient(dev.sX, dev.sY, dev.sX, dev.sY + dev.scrH * 0.10);
-    refl.addColorStop(0, 'rgba(255,255,255,0.04)');
-    refl.addColorStop(0.5, 'rgba(255,255,255,0.015)');
-    refl.addColorStop(1, 'rgba(255,255,255,0)');
-    ctx.fillStyle = refl;
-    ctx.fillRect(dev.sX, dev.sY, dev.scrW, dev.scrH * 0.10);
-    ctx.restore();
-
-    // Bottom fade
-    drawBottomFade(ctx, W, H, brand.bgStyle);
-
+    _drawScreenInDevice(ctx, dev, screenshotImg, brand, mode, isLight);
+    const sbColor = sampleScreenshotTopColor(ctx, dev);
+    drawStatusBarMask(ctx, dev.statusBar, mode, sbColor);
+    _drawScreenEdgeShadows(ctx, dev);
+    _drawGlassReflection(ctx, dev);
   } else {
-    // ── Placeholder (no screenshot) ──
-    const phW = Math.round((W - SIDE_MARGIN * 2) * 0.55);
-    const phH = Math.round((H - DEVICE_START) * 0.72);
-    const phX = (W - phW) / 2;
-    const phY = DEVICE_START + ((H - DEVICE_START) - phH) * 0.3;
-    const phR = Math.round(phW * 0.12);
-
-    ctx.save();
-    rr(ctx, phX, phY, phW, phH, phR);
-    ctx.fillStyle = isLight ? 'rgba(0,0,0,0.02)' : 'rgba(255,255,255,0.012)';
-    ctx.fill();
-    ctx.setLineDash([14, 10]);
-    ctx.strokeStyle = isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.05)';
-    ctx.lineWidth = 2;
-    ctx.stroke();
-    ctx.setLineDash([]);
-    ctx.restore();
-
-    // Inner screen ghost
-    const inset = Math.round(phW * 0.014);
-    ctx.save();
-    rr(ctx, phX + inset, phY + inset, phW - inset * 2, phH - inset * 2, phR - inset);
-    ctx.setLineDash([10, 8]);
-    ctx.strokeStyle = isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.025)';
-    ctx.lineWidth = 1;
-    ctx.stroke();
-    ctx.setLineDash([]);
-    ctx.restore();
-
-    ctx.save();
-    ctx.font = `500 ${Math.round(W * 0.024)}px "${brand.fontFamily}", system-ui, sans-serif`;
-    ctx.fillStyle = isLight ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.10)';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('Drop screenshot here', W / 2, phY + phH / 2);
-    ctx.restore();
-
-    drawBottomFade(ctx, W, H, brand.bgStyle);
+    _drawPlaceholder(ctx, W, H, DEVICE_START, SIDE_MARGIN, brand, isLight);
   }
+
+  drawBottomFade(ctx, W, H, brand.bgStyle);
 }
 
 // ═══════════════════════════════════════════════════════════

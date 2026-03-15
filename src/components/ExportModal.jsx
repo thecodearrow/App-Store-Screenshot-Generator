@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { validateAll, canExport } from '../engine/validator.js';
 import { exportAll } from '../utils/exporter.js';
-import { DEVICE_SIZES } from '../engine/templates.js';
+import { DEVICE_SIZES, QA_CHECKLIST } from '../engine/templates.js';
 
 export default function ExportModal({
   isOpen,
@@ -14,6 +14,7 @@ export default function ExportModal({
   const [exporting, setExporting] = useState(false);
   const [progress, setProgress] = useState({ step: 0, total: 1 });
   const [overrides, setOverrides] = useState({});
+  const [qaChecks, setQaChecks] = useState({});
 
   if (!isOpen) return null;
 
@@ -128,6 +129,40 @@ export default function ExportModal({
                 <p className="export-summary__detail">
                   Includes: Individual PNGs + Contact Sheet + Project JSON
                 </p>
+              </div>
+
+              {/* QA Checklist */}
+              <div className="qa-checklist">
+                <h3>QA Checklist</h3>
+                <p className="qa-checklist__hint">
+                  Review before exporting — {Object.values(qaChecks).filter(Boolean).length}/{QA_CHECKLIST.length} checked
+                </p>
+                {['Copy', 'Layout', 'Content', 'Brand', 'Export'].map((category) => {
+                  const items = QA_CHECKLIST.filter((item) => item.category === category);
+                  if (items.length === 0) return null;
+                  return (
+                    <div key={category} className="qa-checklist__group">
+                      <span className="qa-checklist__category">{category}</span>
+                      {items.map((item) => (
+                        <label key={item.id} className="qa-checklist__item">
+                          <input
+                            type="checkbox"
+                            checked={!!qaChecks[item.id]}
+                            onChange={(e) =>
+                              setQaChecks((prev) => ({
+                                ...prev,
+                                [item.id]: e.target.checked,
+                              }))
+                            }
+                          />
+                          <span className={qaChecks[item.id] ? 'qa-checklist__label--checked' : ''}>
+                            {item.label}
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  );
+                })}
               </div>
             </>
           )}

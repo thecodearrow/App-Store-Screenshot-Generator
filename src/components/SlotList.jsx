@@ -6,6 +6,8 @@ export default function SlotList({
   onSelect,
   onReorder,
   onToggle,
+  onAdd,
+  onRemove,
 }) {
   return (
     <div className="slot-list">
@@ -41,6 +43,18 @@ export default function SlotList({
             >
               {slot.enabled ? '●' : '○'}
             </button>
+            {slots.length > 1 && (
+              <button
+                className="slot-btn slot-btn--delete"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onRemove(index);
+                }}
+                title="Remove screenshot"
+              >
+                ✕
+              </button>
+            )}
             <div className="slot-reorder">
               <button
                 className="slot-btn slot-btn--sm"
@@ -68,6 +82,9 @@ export default function SlotList({
           </div>
         </div>
       ))}
+      <button className="slot-add-btn" onClick={onAdd}>
+        + Add Screenshot
+      </button>
     </div>
   );
 }

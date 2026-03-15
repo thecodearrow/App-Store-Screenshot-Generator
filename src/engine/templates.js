@@ -5,6 +5,7 @@ export const TEMPLATE_SLOTS = [
     defaultHeadline: 'Your AI Coach for Every Race',
     defaultSubheadline: '',
     emphasis: 'AI chat + context understanding',
+    defaultLayout: 'center',
     order: 0,
   },
   {
@@ -13,6 +14,7 @@ export const TEMPLATE_SLOTS = [
     defaultHeadline: 'Plans That Adapt to You',
     defaultSubheadline: '',
     emphasis: 'Adaptive training intelligence',
+    defaultLayout: 'center',
     order: 1,
   },
   {
@@ -21,6 +23,7 @@ export const TEMPLATE_SLOTS = [
     defaultHeadline: 'Your Strava Runs, Smarter',
     defaultSubheadline: '',
     emphasis: 'Strava data integration',
+    defaultLayout: 'center',
     order: 2,
   },
   {
@@ -29,6 +32,7 @@ export const TEMPLATE_SLOTS = [
     defaultHeadline: 'Track What Matters',
     defaultSubheadline: '',
     emphasis: 'Performance data & insights',
+    defaultLayout: 'center',
     order: 3,
   },
   {
@@ -37,11 +41,18 @@ export const TEMPLATE_SLOTS = [
     defaultHeadline: 'Join X+ Runners',
     defaultSubheadline: '',
     emphasis: 'Community & social proof',
+    defaultLayout: 'center',
     order: 4,
   },
 ];
 
 export const DEVICE_SIZES = {
+  'iphone-6.9': {
+    label: 'iPhone 6.9"',
+    width: 1320,
+    height: 2868,
+    platform: 'iphone',
+  },
   'iphone-6.7': {
     label: 'iPhone 6.7"',
     width: 1290,
@@ -50,8 +61,20 @@ export const DEVICE_SIZES = {
   },
   'iphone-6.5': {
     label: 'iPhone 6.5"',
-    width: 1242,
-    height: 2688,
+    width: 1284,
+    height: 2778,
+    platform: 'iphone',
+  },
+  'iphone-6.3': {
+    label: 'iPhone 6.3"',
+    width: 1206,
+    height: 2622,
+    platform: 'iphone',
+  },
+  'iphone-6.1': {
+    label: 'iPhone 6.1"',
+    width: 1125,
+    height: 2436,
     platform: 'iphone',
   },
   'ipad-12.9': {
@@ -231,13 +254,157 @@ export const BG_PRESETS = {
     glowSecondary: '#a0d8b8',
     angle: 170,
   },
+  // ── Orange presets ──
+  amber: {
+    label: 'Amber',
+    mode: 'dark',
+    noiseOpacity: 0.02,
+    stops: [
+      { pos: 0.0, color: '#0c0502' },
+      { pos: 0.3, color: '#1c0e04' },
+      { pos: 0.6, color: '#2a1608' },
+      { pos: 1.0, color: '#1e1006' },
+    ],
+    glowColor: '#d07020',
+    glowSecondary: '#b85a10',
+    angle: 170,
+  },
+  tangerine: {
+    label: 'Tangerine',
+    mode: 'dark',
+    noiseOpacity: 0.02,
+    stops: [
+      { pos: 0.0, color: '#0a0302' },
+      { pos: 0.3, color: '#1e0a04' },
+      { pos: 0.6, color: '#301208' },
+      { pos: 1.0, color: '#220c04' },
+    ],
+    glowColor: '#e85d20',
+    glowSecondary: '#c84810',
+    angle: 172,
+  },
+  peach: {
+    label: 'Peach',
+    mode: 'light',
+    noiseOpacity: 0,
+    stops: [
+      { pos: 0.0, color: '#fff6f0' },
+      { pos: 0.3, color: '#feede2' },
+      { pos: 0.6, color: '#fde4d5' },
+      { pos: 1.0, color: '#feede2' },
+    ],
+    glowColor: '#e8a878',
+    glowSecondary: '#f0c0a0',
+    angle: 168,
+  },
+  sunset: {
+    label: 'Sunset',
+    mode: 'light',
+    noiseOpacity: 0,
+    stops: [
+      { pos: 0.0, color: '#fff4eb' },
+      { pos: 0.3, color: '#ffe8d6' },
+      { pos: 0.6, color: '#ffdcc2' },
+      { pos: 1.0, color: '#ffe8d6' },
+    ],
+    glowColor: '#e09060',
+    glowSecondary: '#f0a880',
+    angle: 175,
+  },
 };
+
+export const LAYOUT_OPTIONS = [
+  { value: 'center', label: 'Center', description: 'Phone centered below headline' },
+  { value: 'offset-left', label: 'Offset Left', description: 'Phone shifted left, text on right' },
+  { value: 'offset-right', label: 'Offset Right', description: 'Phone shifted right, text on left' },
+  { value: 'hero-large', label: 'Hero Large', description: 'Larger phone, minimal text' },
+  { value: 'text-only', label: 'Text Only', description: 'No phone — headline + feature pills' },
+];
 
 export const FONT_OPTIONS = [
   { value: 'Inter', label: 'Inter' },
   { value: 'Montserrat', label: 'Montserrat' },
+  { value: 'Plus Jakarta Sans', label: 'Plus Jakarta Sans' },
+  { value: 'DM Sans', label: 'DM Sans' },
+  { value: 'Poppins', label: 'Poppins' },
+  { value: 'Raleway', label: 'Raleway' },
   { value: 'system-ui', label: 'System UI' },
   { value: 'Helvetica Neue', label: 'Helvetica Neue' },
+  { value: 'SF Pro Display', label: 'SF Pro Display' },
+];
+
+// ── Copywriting guidance ─────────────────────────────────
+// Based on proven App Store copywriting patterns.
+// Each pattern has a formula and examples.
+export const COPY_PATTERNS = [
+  {
+    name: 'Paint a Moment',
+    formula: 'Show the user in their best moment using the app',
+    examples: [
+      'Your morning run, perfectly planned',
+      'Wake up to a cleaner inbox',
+      'Finally, a budget that keeps up with you',
+    ],
+  },
+  {
+    name: 'State an Outcome',
+    formula: 'Lead with the result, not the feature',
+    examples: [
+      'Run faster. Recover smarter.',
+      'Save 3 hours every week',
+      'Never miss a deadline again',
+    ],
+  },
+  {
+    name: 'Kill a Pain',
+    formula: 'Name the frustration, then resolve it',
+    examples: [
+      'No more guessing your pace',
+      'Stop losing receipts',
+      'Forget spreadsheet chaos',
+    ],
+  },
+  {
+    name: 'Social Proof',
+    formula: 'Use numbers or community to build trust',
+    examples: [
+      'Join 50,000+ runners',
+      'Trusted by 10,000 teams',
+      '#1 in Health & Fitness',
+    ],
+  },
+  {
+    name: 'Feature Spotlight',
+    formula: 'Highlight one feature with a benefit twist',
+    examples: [
+      'AI coaching that adapts to you',
+      'Strava sync in one tap',
+      'Real-time collaboration, zero lag',
+    ],
+  },
+];
+
+// Narrative arc — recommended screenshot ordering
+export const NARRATIVE_ARC = [
+  { position: 1, role: 'Hero', tip: 'Your strongest benefit. First impression — make it count.' },
+  { position: 2, role: 'Differentiator', tip: 'What makes you different? Unique integration or approach.' },
+  { position: 3, role: 'Core Feature', tip: 'Show your most-used feature in action.' },
+  { position: 4, role: 'Deep Value', tip: 'Analytics, insights, or advanced capability.' },
+  { position: 5, role: 'Trust Signal', tip: 'Social proof, community size, or awards.' },
+];
+
+// QA checklist items for final review
+export const QA_CHECKLIST = [
+  { id: 'one-idea', label: 'Each headline communicates one idea in ~1 second', category: 'Copy' },
+  { id: 'first-benefit', label: 'First slide sells the strongest user benefit', category: 'Copy' },
+  { id: 'no-repeat-layout', label: 'Adjacent slides use different layouts', category: 'Layout' },
+  { id: 'readable-thumb', label: 'Text is readable at App Store thumbnail size', category: 'Copy' },
+  { id: 'no-block-ui', label: 'Decorative elements don\'t block the UI screenshot', category: 'Layout' },
+  { id: 'correct-after-export', label: 'Text and framing look correct after export sizing', category: 'Export' },
+  { id: 'no-settings-screen', label: 'No Settings or configuration screens used', category: 'Content' },
+  { id: 'all-sizes-exported', label: 'All required device sizes are exported', category: 'Export' },
+  { id: 'brand-consistent', label: 'Colors, fonts, and style are consistent across all slides', category: 'Brand' },
+  { id: 'logo-visible', label: 'Logo/app name is visible if included', category: 'Brand' },
 ];
 
 export function createDefaultSlotState(template) {
@@ -251,7 +418,27 @@ export function createDefaultSlotState(template) {
     screenshotNaturalWidth: 0,
     screenshotNaturalHeight: 0,
     enabled: true,
+    layout: template.defaultLayout || 'center',
     order: template.order,
+  };
+}
+
+let _nextSlotId = 1;
+
+export function createNewSlot(order) {
+  const id = `custom-${_nextSlotId++}`;
+  return {
+    id,
+    name: `Screenshot ${order + 1}`,
+    headline: '',
+    subheadline: '',
+    screenshot: null,
+    screenshotDataUrl: null,
+    screenshotNaturalWidth: 0,
+    screenshotNaturalHeight: 0,
+    enabled: true,
+    layout: 'center',
+    order,
   };
 }
 

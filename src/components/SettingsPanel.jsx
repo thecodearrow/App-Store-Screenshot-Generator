@@ -1,8 +1,11 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   BG_PRESETS,
   FONT_OPTIONS,
   DEVICE_SIZES,
+  LAYOUT_OPTIONS,
+  COPY_PATTERNS,
+  NARRATIVE_ARC,
 } from '../engine/templates.js';
 import { validateFilename } from '../engine/validator.js';
 
@@ -68,11 +71,31 @@ export default function SettingsPanel({
     e.stopPropagation();
   }, []);
 
+  const [copyGuideOpen, setCopyGuideOpen] = useState(false);
+
+  // Find the narrative arc tip for the current slot position
+  const arcTip = NARRATIVE_ARC[slotIndex] || null;
+
   return (
     <div className="settings-panel">
       {/* Slot Settings */}
       <div className="settings-section">
         <h3 className="settings-section__title">{slot.name}</h3>
+
+        {slot.id.startsWith('custom-') && (
+          <>
+            <label className="field-label">Name</label>
+            <input
+              type="text"
+              className="field-input"
+              value={slot.name}
+              onChange={(e) =>
+                onSlotChange(slotIndex, { name: e.target.value })
+              }
+              placeholder="Screenshot name..."
+            />
+          </>
+        )}
 
         <label className="field-label">Headline</label>
         <input
@@ -95,6 +118,66 @@ export default function SettingsPanel({
           }
           placeholder="Optional subheadline..."
         />
+
+        {/* Copy Guide */}
+        <div className="copy-guide">
+          <button
+            className="copy-guide__toggle"
+            onClick={() => setCopyGuideOpen((o) => !o)}
+          >
+            <span className="copy-guide__toggle-icon">{copyGuideOpen ? '▾' : '▸'}</span>
+            <span>Copy Guide</span>
+            {arcTip && <span className="copy-guide__arc-badge">{arcTip.role}</span>}
+          </button>
+
+          {copyGuideOpen && (
+            <div className="copy-guide__body">
+              {arcTip && (
+                <div className="copy-guide__arc-tip">
+                  <span className="copy-guide__arc-label">Slot {arcTip.position}: {arcTip.role}</span>
+                  <span className="copy-guide__arc-desc">{arcTip.tip}</span>
+                </div>
+              )}
+
+              <div className="copy-guide__patterns">
+                {COPY_PATTERNS.map((pattern) => (
+                  <div key={pattern.name} className="copy-pattern">
+                    <div className="copy-pattern__header">
+                      <span className="copy-pattern__name">{pattern.name}</span>
+                      <span className="copy-pattern__formula">{pattern.formula}</span>
+                    </div>
+                    <div className="copy-pattern__examples">
+                      {pattern.examples.map((ex, i) => (
+                        <button
+                          key={i}
+                          className="copy-pattern__example"
+                          title="Click to use as headline"
+                          onClick={() => onSlotChange(slotIndex, { headline: ex })}
+                        >
+                          "{ex}"
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <label className="field-label">Layout</label>
+        <div className="layout-options">
+          {LAYOUT_OPTIONS.map((opt) => (
+            <button
+              key={opt.value}
+              className={`layout-option ${slot.layout === opt.value ? 'layout-option--active' : ''}`}
+              onClick={() => onSlotChange(slotIndex, { layout: opt.value })}
+              title={opt.description}
+            >
+              <span className="layout-option__label">{opt.label}</span>
+            </button>
+          ))}
+        </div>
 
         {slot.id === 'social' && (
           <>
